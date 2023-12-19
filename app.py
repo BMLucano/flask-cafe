@@ -2,10 +2,11 @@
 
 import os
 
-from flask import Flask, render_template
+from flask import Flask, render_template, flash, redirect
 from flask_debugtoolbar import DebugToolbarExtension
 
-from models import connect_db, Cafe
+from models import connect_db, db, Cafe, City
+from forms import AddCafeForm
 
 
 app = Flask(__name__)
@@ -87,3 +88,62 @@ def cafe_detail(cafe_id):
         'cafe/detail.html',
         cafe=cafe,
     )
+
+
+@app.route('/cafes/add', methods=["GET", "POST"])
+def handle_add_cafe():
+    """Show a form for adding a cafe and add to database.
+    Redirect to new cafe detail page with submission.flas
+    """
+
+    form = AddCafeForm()
+
+    # TODO: make this a separate function
+    cities = [(c.code, c.name) for c in City.query.all()]
+    form.city.choices = cities
+
+    if form.validate_on_submit():
+
+        new_cafe = Cafe(
+            name=form.name.data,
+            description=form.description.data,
+            url=form.url.data,
+            address=form.address.data,
+            city_code=form.city.data,
+            image_url=form.image_url.data
+        )
+
+        db.session.add(new_cafe)
+        db.session.commit()
+        flash(f"{new_cafe.name} added.")
+
+        return redirect(f"/cafes/{new_cafe.id}")
+
+    return render_template("cafe/add-form.html", form=form)
+
+
+@app.route("/cafes/<int:cafe_id>/edit", methods=["GET", "POST"])
+def handle_edit_cafe(cafe_id):
+    """Show form for editing a cafe and add to database.
+    Redirect to cafe detail page
+    """
+    cafe = Cafe.query.get_or_404(cafe_id)
+    form = AddCafeForm(obj=cafe)
+    cities = [(c.code, c.name) for c in City.query.all()]
+    form.city.choices = cities
+
+    if form.validate_on_submit():
+        cafe.name=form.name.data,
+        cafe.description=form.description.data,
+        cafe.url=form.url.data,
+        cafe.address=form.address.data,
+        cafe.city_code=form.city.data,
+        cafe.image_url=form.image_url.data
+
+        db.session.add(cafe)
+        db.session.commit()
+        flash(f"{cafe.name} edited.")
+
+        return redirect(f"/cafes/{cafe.id}")
+
+    return render_template("cafe/edit-form.html", form=form, cafe=cafe)
