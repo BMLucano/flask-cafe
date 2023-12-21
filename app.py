@@ -2,11 +2,11 @@
 
 import os
 
-from flask import Flask, render_template, flash, redirect
+from flask import Flask, render_template, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 
-from models import connect_db, db, Cafe, City
-from forms import AddCafeForm
+from models import connect_db, db, Cafe, City, User
+from forms import AddCafeForm, SignupForm, LoginForm
 
 
 app = Flask(__name__)
@@ -28,28 +28,28 @@ CURR_USER_KEY = "curr_user"
 NOT_LOGGED_IN_MSG = "You are not logged in."
 
 
-# @app.before_request
-# def add_user_to_g():
-#     """If we're logged in, add curr user to Flask global."""
+@app.before_request
+def add_user_to_g():
+    """If we're logged in, add curr user to Flask global."""
 
-#     if CURR_USER_KEY in session:
-#         g.user = User.query.get(session[CURR_USER_KEY])
+    if CURR_USER_KEY in session:
+        g.user = User.query.get(session[CURR_USER_KEY])
 
-#     else:
-#         g.user = None
-
-
-# def do_login(user):
-#     """Log in user."""
-
-#     session[CURR_USER_KEY] = user.id
+    else:
+        g.user = None
 
 
-# def do_logout():
-#     """Logout user."""
+def do_login(user):
+    """Log in user."""
 
-#     if CURR_USER_KEY in session:
-#         del session[CURR_USER_KEY]
+    session[CURR_USER_KEY] = user.id
+
+
+def do_logout():
+    """Logout user."""
+
+    if CURR_USER_KEY in session:
+        del session[CURR_USER_KEY]
 
 
 #######################################
@@ -97,10 +97,7 @@ def handle_add_cafe():
     """
 
     form = AddCafeForm()
-
-    # TODO: make this a separate function
-    cities = [(c.code, c.name) for c in City.query.all()]
-    form.city.choices = cities
+    form.city.choices = City.get_choices()
 
     if form.validate_on_submit():
 
@@ -111,6 +108,7 @@ def handle_add_cafe():
             address=form.address.data,
             city_code=form.city.data,
             image_url=form.image_url.data
+            # form.populate_obj(obj)
         )
 
         db.session.add(new_cafe)
@@ -121,7 +119,7 @@ def handle_add_cafe():
 
     return render_template("cafe/add-form.html", form=form)
 
-
+# TODO:fix default image
 @app.route("/cafes/<int:cafe_id>/edit", methods=["GET", "POST"])
 def handle_edit_cafe(cafe_id):
     """Show form for editing a cafe and add to database.
@@ -129,8 +127,7 @@ def handle_edit_cafe(cafe_id):
     """
     cafe = Cafe.query.get_or_404(cafe_id)
     form = AddCafeForm(obj=cafe)
-    cities = [(c.code, c.name) for c in City.query.all()]
-    form.city.choices = cities
+    form.city.choices = City.get_choices()
 
     if form.validate_on_submit():
         cafe.name=form.name.data,
@@ -139,6 +136,7 @@ def handle_edit_cafe(cafe_id):
         cafe.address=form.address.data,
         cafe.city_code=form.city.data,
         cafe.image_url=form.image_url.data
+        # form.populate_obj(cafe)
 
         db.session.add(cafe)
         db.session.commit()
@@ -147,3 +145,27 @@ def handle_edit_cafe(cafe_id):
         return redirect(f"/cafes/{cafe.id}")
 
     return render_template("cafe/edit-form.html", form=form, cafe=cafe)
+
+
+#######################################
+# users
+
+@app.route("/signup", methods=["POST", "GET"])
+def signup():
+    """Show registration form and process form.
+    Adds user to DB and logs them in. Redirects to cafe list.
+    """
+
+    form = SignupForm()
+
+    if form.validate_on_submit():
+        try:
+            new_user = User.register(
+                username=form.username.data,
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                description=form.description.data,
+                email=form.email.data,
+                password=form.password.data,
+                image_url=form.image_url.data)
+        except IntegrityError:
