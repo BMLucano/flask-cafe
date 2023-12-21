@@ -39,7 +39,7 @@ class SignupForm(FlaskForm):
         "Password",
         validators=[InputRequired(), Length(min=6)]
     )
-    image_url = StringField("Image URL", validators=[URL()])
+    image_url = StringField("Image URL", validators=[Optional(),URL()])
 
 
 class LoginForm(FlaskForm):
@@ -53,3 +53,26 @@ class LoginForm(FlaskForm):
         "Password",
         validators=[InputRequired(), Length(min=6)]
     )
+
+
+class CSRFForm(FlaskForm):
+    """CSRF Protection"""
+
+
+class ProfileEditForm(FlaskForm):
+    """Form for editing user profile"""
+
+    first_name = StringField(
+        "First name",
+        validators=[InputRequired(), Length(max=20)]
+    )
+    last_name = StringField(
+        "Last name",
+        validators=[InputRequired(), Length(max=20)]
+    )
+    description = TextAreaField("Description")
+    email = StringField(
+        "Email",
+        validators=[InputRequired(), Email()]
+    )
+    image_url = StringField("Image URL", validators=[Optional(),URL()])

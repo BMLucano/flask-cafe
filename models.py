@@ -147,9 +147,9 @@ class User(db.Model):
                 first_name,
                 last_name,
                 description,
-                image_url,
                 password,
-                admin=False):
+                admin=False,
+                image_url=None):
         """Registers a new user and handles password hashing"""
 
         hashed = bcrypt.generate_password_hash(password).decode('utf8')

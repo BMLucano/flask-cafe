@@ -6,8 +6,9 @@ from flask import Flask, render_template, flash, redirect, session, g
 from flask_debugtoolbar import DebugToolbarExtension
 
 from models import connect_db, db, Cafe, City, User
-from forms import AddCafeForm, SignupForm, LoginForm
+from forms import AddCafeForm, SignupForm, LoginForm, CSRFForm, ProfileEditForm
 
+from sqlalchemy.exc import IntegrityError
 
 app = Flask(__name__)
 
@@ -21,6 +22,8 @@ toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
 
+
+# TODO: fix defualt images upon sign up and add cafe. also populating them in edit
 #######################################
 # auth & auth routes
 
@@ -38,6 +41,12 @@ def add_user_to_g():
     else:
         g.user = None
 
+
+@app.before_request
+def add_csrf_form():
+    """CSRF form for every user"""
+
+    g.csrf_form = CSRFForm()
 
 def do_login(user):
     """Log in user."""
@@ -107,7 +116,7 @@ def handle_add_cafe():
             url=form.url.data,
             address=form.address.data,
             city_code=form.city.data,
-            image_url=form.image_url.data
+            image_url=form.image_url.data or Cafe.image_url.default.arg
             # form.populate_obj(obj)
         )
 
@@ -119,7 +128,7 @@ def handle_add_cafe():
 
     return render_template("cafe/add-form.html", form=form)
 
-# TODO:fix default image
+
 @app.route("/cafes/<int:cafe_id>/edit", methods=["GET", "POST"])
 def handle_edit_cafe(cafe_id):
     """Show form for editing a cafe and add to database.
@@ -135,7 +144,7 @@ def handle_edit_cafe(cafe_id):
         cafe.url=form.url.data,
         cafe.address=form.address.data,
         cafe.city_code=form.city.data,
-        cafe.image_url=form.image_url.data
+        cafe.image_url=form.image_url.data or Cafe.image_url.default.arg
         # form.populate_obj(cafe)
 
         db.session.add(cafe)
@@ -167,5 +176,98 @@ def signup():
                 description=form.description.data,
                 email=form.email.data,
                 password=form.password.data,
-                image_url=form.image_url.data)
+                image_url=form.image_url.data or User.image_url.default.arg)
+
+            db.session.add(new_user)
+            db.session.commit()
+
         except IntegrityError:
+            flash(f"Username already taken.", 'warning')
+            return render_template("auth/signup-form.html", form=form)
+
+        do_login(new_user)
+
+        flash(f"You are signed up and logged in.")
+        return redirect("/cafes")
+
+    return render_template("auth/signup-form.html", form=form)
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Show login form and handle login.
+    Redirect to cafe list
+    """
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        user = User.authenticate(
+            username=form.username.data,
+            password=form.password.data
+        )
+        if user:
+            do_login(user)
+            flash(f"Hello, {user.username}!")
+            return redirect("/cafes")
+
+        flash("Invalid credentials")
+
+    return render_template("auth/login-form.html", form=form)
+
+
+@app.post("/logout")
+def logout():
+    """Log out user"""
+
+    if not g.user or not g.csrf_form.validate_on_submit():
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+
+    do_logout()
+    flash("You have successfully logged out")
+    return redirect("/cafes")
+
+
+# All of these routes should check if the web user is logged in; if not, they should redirect to the login form with NOT_LOGGED_IN flashed message.
+
+@app.get("/profile")
+def show_user_profile():
+    """Show user profile."""
+    if not g.user:
+        flash(NOT_LOGGED_IN_MSG)
+        return redirect("/login")
+
+    return render_template("profile/detail.html", user=g.user)
+
+
+
+@app.route("/profile/edit", methods=["GET", "POST"])
+def edit_profile():
+    """SHow edit profile form and process the edit.
+    Redirect to to profile page upon successful edit.
+    """
+
+    if not g.user:
+        flash(NOT_LOGGED_IN_MSG)
+        return redirect("/login")
+
+    user=g.user
+    form = ProfileEditForm(obj=user)
+
+    if form.validate_on_submit():
+        user.first_name=form.first_name.data
+        user.last_name=form.last_name.data
+        user.description=form.description.data
+        user.email=form.email.data
+        user.image_url=form.image_url.data or User.image_url.default.arg
+
+        db.session.commit()
+
+        flash("Profile edited.")
+        return redirect("/profile")
+
+    return render_template("profile/edit-form.html", form=form)
+
+
