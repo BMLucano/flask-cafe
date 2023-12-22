@@ -79,6 +79,13 @@ class Cafe(db.Model):
 
     city = db.relationship("City", backref='cafes')
 
+    #relationship from user to liked cafes and back
+    liking_user = db.relationship(
+        "User",
+        secondary='likes',
+        backref="liked_cafes"
+    )
+
     def __repr__(self):
         return f'<Cafe id={self.id} name="{self.name}">'
 
@@ -175,6 +182,24 @@ class User(db.Model):
             return user
         else:
             return False
+
+
+class Like(db.Model):
+    """Maps liked cafe to user"""
+
+    __tablename__ = "likes"
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        primary_key=True
+    )
+    cafe_id = db.Column(
+        db.Integer,
+        db.ForeignKey('cafes.id'),
+        primary_key=True
+    )
+
 
 
 

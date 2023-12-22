@@ -271,3 +271,32 @@ def edit_profile():
     return render_template("profile/edit-form.html", form=form)
 
 
+#######################################
+# likes
+
+@app.get("/api/likes")
+def likes():
+    """Acceps query parameter of cafe_id.
+    Checks if current user likes that cafe.
+    Returns JSON like:
+        {"likes": true|false}
+    """
+    ...
+
+
+@app.post("/api/like")
+def like_cafe():
+    """Accepts JSON like:  {"cafe_id": 1}
+    Makes current user like that cafe.
+    Returns JSON like:   {"liked": 1}
+    """
+    ...
+
+
+@app.post("/api/unlike")
+def unlike_cafe():
+    """Accepts JSON like:  {"cafe_id": 1}
+    Makes current user unlike that cafe.
+    Returns JSON like:   {"unliked": 1}
+    """
+    ...
