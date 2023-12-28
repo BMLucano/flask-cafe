@@ -287,8 +287,7 @@ def likes():
     if not g.user:
         return jsonify(error="Not logged in")
 
-    cafe_id = request.json["cafe_id"]
-    # cafe_id = request.args["cafe_id"]
+    cafe_id = int(request.args["cafe_id"])
 
     if cafe_id in g.user.liked_cafes:
         return jsonify(likes=True)
@@ -304,10 +303,18 @@ def like_cafe():
     Makes current user like that cafe.
     Returns JSON like:   {"liked": 1}
     """
+
     if not g.user:
         return jsonify(error="Not logged in")
 
-    liked_cafe = request.json[""]
+    cafe_id = int(request.json["cafe_id"])
+    print("#####cafe id", cafe_id)
+    cafe = Cafe.query.get_or_404(cafe_id)
+
+    g.user.liked_cafes.append(cafe)
+    db.session.commit()
+
+    return jsonify(liked=f"{cafe.id}")
 
 
 
@@ -319,3 +326,11 @@ def unlike_cafe():
     """
     if not g.user:
         return jsonify(error="Not logged in")
+
+    cafe_id = int(request.json["cafe_id"])
+    cafe = Cafe.query.get_or_404(cafe_id)
+
+    Like.query.filter_by(user_id = g.user.id, cafe_id = cafe_id).delete()
+    db.session.commit()
+
+    return jsonify(unliked=f"{cafe.id}")
