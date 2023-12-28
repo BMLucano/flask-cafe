@@ -2,13 +2,14 @@
 
 import os
 
-from flask import Flask, render_template, flash, redirect, session, g
+from flask import Flask, render_template, flash, redirect, session, jsonify, g, request
 from flask_debugtoolbar import DebugToolbarExtension
 
-from models import connect_db, db, Cafe, City, User
+from models import connect_db, db, Cafe, City, User, Like
 from forms import AddCafeForm, SignupForm, LoginForm, CSRFForm, ProfileEditForm
 
 from sqlalchemy.exc import IntegrityError
+import requests
 
 app = Flask(__name__)
 
@@ -235,6 +236,7 @@ def logout():
 @app.get("/profile")
 def show_user_profile():
     """Show user profile."""
+
     if not g.user:
         flash(NOT_LOGGED_IN_MSG)
         return redirect("/login")
@@ -281,8 +283,20 @@ def likes():
     Returns JSON like:
         {"likes": true|false}
     """
-    ...
 
+    if not g.user:
+        return jsonify(error="Not logged in")
+
+    cafe_id = request.json["cafe_id"]
+    # cafe_id = request.args["cafe_id"]
+
+    if cafe_id in g.user.liked_cafes:
+        return jsonify(likes=True)
+    else:
+        return jsonify(likes=False)
+    # cafe_id = 1
+    # print("user liked cafes", Like.query.get(cafe_id))
+    # breakpoint()
 
 @app.post("/api/like")
 def like_cafe():
@@ -290,7 +304,11 @@ def like_cafe():
     Makes current user like that cafe.
     Returns JSON like:   {"liked": 1}
     """
-    ...
+    if not g.user:
+        return jsonify(error="Not logged in")
+
+    liked_cafe = request.json[""]
+
 
 
 @app.post("/api/unlike")
@@ -299,4 +317,5 @@ def unlike_cafe():
     Makes current user unlike that cafe.
     Returns JSON like:   {"unliked": 1}
     """
-    ...
+    if not g.user:
+        return jsonify(error="Not logged in")
